@@ -1,157 +1,154 @@
+# Configure Terraform backend
+terraform {
+  backend "s3" {
+    bucket         = "mapapp-terraform-state-storage"
+    key            = "dev/terraform.tfstate"
+    region         = "ap-southeast-1"
+    dynamodb_table = "mapapp-terraform-state-lock"
+    encrypt        = true
+  }
+}
+
+# Data sources
+data "aws_caller_identity" "current" {}
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
+# Local values
+locals {
+  common_tags = {
+    Environment = var.environment
+    Project     = var.project_name
+    ManagedBy   = "terraform"
+    Owner       = "DevOps"
+  }
+  
+  cluster_name = "${var.project_name}-${var.environment}-eks"
+  vpc_name     = "${var.project_name}-${var.environment}-vpc"
+}
+
+#---------------------------------------------------------
+# VPC Module
+#---------------------------------------------------------
 module "vpc" {
   source = "../../modules/vpc"
 
-  vpc_name             = "mapapp-dev-vpc"
-  vpc_cidr             = var.vpc_cidr
-  azs                  = var.azs
-  private_subnet_cidrs = ["10.0.1.0/24", "10.0.2.0/24"]
-  public_subnet_cidrs  = ["10.0.101.0/24", "10.0.102.0/24"]
-  tags                 = var.tags
+  vpc_name               = local.vpc_name
+  cidr_block            = var.vpc_cidr
+  azs                   = var.azs
+  private_subnet_cidrs  = var.private_subnet_cidrs
+  public_subnet_cidrs   = var.public_subnet_cidrs
+  enable_nat_gateway    = true
+  single_nat_gateway    = var.single_nat_gateway
+
+  tags = local.common_tags
 }
 
+#---------------------------------------------------------
+# Key Pair Module
+#---------------------------------------------------------
 module "keypair" {
   source = "../../modules/keypair"
 
-  key_name        = var.key_name
-  public_key_path = var.public_key_path
+  key_name   = "${var.project_name}-${var.environment}-key"
+  public_key = var.public_key
 }
 
+#---------------------------------------------------------
+# EKS Module
+#---------------------------------------------------------
 module "eks" {
   source = "../../modules/eks"
 
-  cluster_name       = var.cluster_name
-  kubernetes_version = var.cluster_version
+  cluster_name           = local.cluster_name
+  cluster_version        = var.cluster_version
+  vpc_id                = module.vpc.vpc_id
+  subnet_ids            = module.vpc.private_subnet_ids
+  node_instance_type    = var.eks_instance_type
+  node_desired_capacity = var.eks_desired_nodes
+  key_name              = module.keypair.key_name
+
+  tags = local.common_tags
+}
+
+#---------------------------------------------------------
+# IAM Module
+#---------------------------------------------------------
+module "iam" {
+  source = "../../modules/iam"
+
+  cluster_oidc_issuer_url = module.eks.oidc_provider_url
+  cluster_name           = local.cluster_name
+
+  tags = local.common_tags
+}
+
+#---------------------------------------------------------
+# Databases Module
+#---------------------------------------------------------
+module "databases" {
+  source = "../../modules/databases"
+
+  environment         = var.environment
   vpc_id             = module.vpc.vpc_id
   private_subnet_ids = module.vpc.private_subnet_ids
 
-  eks_managed_node_groups = {
-    default = {
-      instance_types = ["t3.medium"]
-      min_size       = 2
-      max_size       = 3
-      desired_size   = 2
-      key_name       = module.keypair.key_name
-    }
-  }
+  # RDS MySQL Configuration
+  db_instance_class = var.db_instance_class
+  db_multi_az       = var.db_multi_az
+  db_username       = var.db_username
+  db_password       = var.db_password
 
-  tags = var.tags
+  # DocumentDB Configuration
+  docdb_instance_class = var.docdb_instance_class
+  docdb_instances     = var.docdb_instances
+  docdb_username      = var.docdb_username
+  docdb_password      = var.docdb_password
+
+  # Redis Configuration
+  redis_node_type = var.redis_node_type
+  redis_replicas  = var.redis_replicas
+
+  tags = local.common_tags
 }
 
-module "iam_jenkins" {
-  source = "../../modules/iam"
-
-  role_name                 = "mapapp-dev-jenkins-role"
-  oidc_provider_arn         = module.eks.oidc_provider_arn
-  oidc_provider_url         = module.eks.oidc_provider_url
-  service_account_namespace = "cicd"
-  service_account_name      = "jenkins"
-  attach_policy_arns        = ["arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"]
-  tags                      = var.tags
-}
-
-resource "aws_security_group" "db_sg" {
-  name        = "mapapp-dev-db-sg"
-  description = "Allow EKS nodes to access all databases"
-  vpc_id      = module.vpc.vpc_id
-
-  ingress {
-    from_port       = 3306 // MySQL
-    to_port         = 3306
-    protocol        = "tcp"
-    security_groups = [module.eks.node_security_group_id]
-  }
-
-  ingress {
-    from_port       = 27017 // DocumentDB
-    to_port         = 27017
-    protocol        = "tcp"
-    security_groups = [module.eks.node_security_group_id]
-  }
-
-  ingress {
-    from_port       = 6379 // Redis
-    to_port         = 6379
-    protocol        = "tcp"
-    security_groups = [module.eks.node_security_group_id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = "-1"
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
-  tags = var.tags
-}
-
-resource "aws_db_subnet_group" "rds" {
-  name       = "mapapp-dev-rds-sng"
-  subnet_ids = module.vpc.private_subnets_ids
-  tags       = var.tags
-}
-
-resource "aws_db_instance" "mysql" {
-  identifier           = "mapapp-dev-mysql"
-  engine               = "mysql"
-  engine_version       = "8.0"
-  instance_class       = "db.t3.micro"
-  allocated_storage    = 20
-  db_subnet_group_name = aws_db_subnet_group.rds.name
-  vpc_security_group_ids = [aws_security_group.db_sg.id]
-  username             = var.db_username
-  password             = var.db_password
-  skip_final_snapshot  = true
-  tags                 = var.tags
-}
-
-resource "aws_docdb_subnet_group" "docdb" {
-  name       = "mapapp-dev-docdb-sng"
-  subnet_ids = module.vpc.private_subnets_ids
-  tags       = var.tags
-}
-
-resource "aws_docdb_cluster" "docdb" {
-  cluster_identifier      = "mapapp-dev-docdb"
-  engine_version          = "4.0.0"
-  master_username         = var.docdb_username
-  master_password         = var.docdb_password
-  db_subnet_group_name    = aws_docdb_subnet_group.docdb.name
-  vpc_security_group_ids  = [aws_security_group.db_sg.id]
-  skip_final_snapshot     = true
-  tags                    = var.tags
-}
-
-resource "aws_docdb_cluster_instance" "docdb" {
-  count              = 1
-  identifier         = "mapapp-dev-docdb-instance-${count.index}"
-  cluster_identifier = aws_docdb_cluster.docdb.id
-  instance_class     = "db.t3.medium"
-  tags               = var.tags
-}
-
-resource "aws_elasticache_subnet_group" "redis" {
-  name       = "mapapp-dev-redis-sng"
-  subnet_ids = module.vpc.private_subnets_ids
-}
-
-resource "aws_elasticache_cluster" "redis" {
-  cluster_id           = "mapapp-dev-redis"
-  engine               = "redis"
-  node_type            = "cache.t3.micro"
-  num_cache_nodes      = 1
-  parameter_group_name = "default.redis6.x"
-  subnet_group_name    = aws_elasticache_subnet_group.redis.name
-  security_group_ids   = [aws_security_group.db_sg.id]
-  tags                 = var.tags
-}
-
+#---------------------------------------------------------
+# EFS Module
+#---------------------------------------------------------
 module "efs" {
   source = "../../modules/efs"
 
-  vpc_id      = module.vpc.vpc_id
-  subnet_ids  = module.vpc.private_subnet_ids
-  node_sg_id  = module.eks.node_security_group_id
-  efs_name    = var.efs_name
-  tags        = var.tags
+  efs_name               = "${var.project_name}-${var.environment}-efs"
+  vpc_id                = module.vpc.vpc_id
+  subnet_ids            = module.vpc.private_subnet_ids
+  node_security_group_id = module.eks.node_security_group_id
+
+  tags = local.common_tags
+}
+
+#---------------------------------------------------------
+# Helm Releases Module - Only for DEV environment
+#---------------------------------------------------------
+module "helm_releases" {
+  source = "../../modules/helm-releases"
+
+  cluster_name         = local.cluster_name
+  cluster_endpoint     = module.eks.cluster_endpoint
+  aws_region          = var.region
+
+  # Enable components for DEV environment
+  enable_aws_load_balancer_controller = true
+  enable_efs_csi_driver              = true
+  enable_jenkins                     = true
+  enable_argocd                      = true
+  enable_cluster_autoscaler          = true
+
+  # IAM Role ARNs
+  aws_load_balancer_controller_role_arn = module.iam.aws_load_balancer_controller_role_arn
+  efs_csi_driver_role_arn              = module.iam.efs_csi_driver_role_arn
+  jenkins_role_arn                     = module.iam.jenkins_role_arn
+  cluster_autoscaler_role_arn          = module.iam.cluster_autoscaler_role_arn
+
+  depends_on = [module.eks, module.iam, module.efs]
 }

@@ -1,79 +1,149 @@
-variable "aws_region" {
-  description = "AWS region to deploy resources"
+variable "region" {
+  description = "AWS region"
   type        = string
   default     = "ap-southeast-1"
 }
 
+variable "environment" {
+  description = "Environment name"
+  type        = string
+  default     = "dev"
+}
+
+variable "project_name" {
+  description = "Project name"
+  type        = string
+  default     = "mapapp"
+}
+
+# VPC Configuration
+variable "vpc_cidr" {
+  description = "CIDR block for VPC"
+  type        = string
+  default     = "10.0.0.0/16"
+}
+
 variable "azs" {
-  description = "List of Availability Zones to use"
+  description = "Availability Zones"
   type        = list(string)
   default     = ["ap-southeast-1a", "ap-southeast-1b"]
 }
 
-variable "tags" {
-  description = "Common tags"
-  type        = map(string)
-  default     = {
-    Environment = "dev"
-    Project     = "mapapp"
-  }
+variable "private_subnet_cidrs" {
+  description = "CIDR blocks for private subnets"
+  type        = list(string)
+  default     = ["10.0.101.0/24", "10.0.102.0/24"]
 }
 
-variable "vpc_cidr" {
-  type        = string
-  description = "CIDR block for the VPC"
-  default     = "10.0.0.0/16"
+variable "public_subnet_cidrs" {
+  description = "CIDR blocks for public subnets"
+  type        = list(string)
+  default     = ["10.0.1.0/24", "10.0.2.0/24"]
 }
 
+variable "single_nat_gateway" {
+  description = "Use single NAT Gateway for cost savings in dev"
+  type        = bool
+  default     = true
+}
+
+# EKS Configuration
 variable "cluster_version" {
   description = "Kubernetes version"
   type        = string
   default     = "1.30"
 }
 
-variable "cluster_name" {
+variable "eks_instance_type" {
+  description = "Instance type for EKS worker nodes"
   type        = string
-  description = "EKS Cluster name"
-  default     = "mapapp-dev"
+  default     = "t3.medium"
+}
+
+variable "eks_desired_nodes" {
+  description = "Desired number of worker nodes"
+  type        = number
+  default     = 2
+}
+
+variable "eks_min_nodes" {
+  description = "Minimum number of worker nodes"
+  type        = number
+  default     = 1
+}
+
+variable "eks_max_nodes" {
+  description = "Maximum number of worker nodes"
+  type        = number
+  default     = 4
+}
+
+# Database Configuration
+variable "db_instance_class" {
+  description = "RDS instance class"
+  type        = string
+  default     = "db.t4g.micro"
+}
+
+variable "db_multi_az" {
+  description = "Enable Multi-AZ for RDS"
+  type        = bool
+  default     = false
 }
 
 variable "db_username" {
+  description = "Database master username"
   type        = string
-  default     = "mapapp_admin"
-  description = "Username for RDS MySQL"
+  default     = "admin"
 }
 
 variable "db_password" {
+  description = "Database master password"
   type        = string
   sensitive   = true
-  description = "Password for RDS MySQL (dev only)"
+  default     = "DevPassw0rd!"
+}
+
+variable "docdb_instance_class" {
+  description = "DocumentDB instance class"
+  type        = string
+  default     = "db.t4g.medium"
+}
+
+variable "docdb_instances" {
+  description = "Number of DocumentDB instances"
+  type        = number
+  default     = 1
 }
 
 variable "docdb_username" {
+  description = "DocumentDB master username"
   type        = string
-  description = "Username for DocumentDB"
+  default     = "admin"
 }
 
 variable "docdb_password" {
+  description = "DocumentDB master password"
   type        = string
   sensitive   = true
-  description = "Password for DocumentDB (dev only)"
+  default     = "DevPassw0rd!"
 }
 
-variable "key_name" {
-  description = "The name for the key pair."
+variable "redis_node_type" {
+  description = "Redis node type"
   type        = string
-  default     = "mapapp-dev-eks-key"
+  default     = "cache.t3.micro"
 }
 
-variable "public_key_path" {
-  description = "The path to the public key file."
-  type        = string
-  default     = "~/.ssh/id_rsa.pub"
+variable "redis_replicas" {
+  description = "Number of Redis replicas"
+  type        = number
+  default     = 0
 }
 
-variable "efs_name" {
-  description = "The name for the EFS file system."
+# SSH Key Configuration
+variable "public_key" {
+  description = "Public key for EC2 instances"
   type        = string
-  default     = "mapapp-dev-efs"
+  default     = ""
 }
