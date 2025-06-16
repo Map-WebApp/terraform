@@ -325,7 +325,7 @@ VI. KIỂM TRA TỔNG THỂ SAU KHI HOÀN THÀNH
      --granularity DAILY \
      --metrics BlendedCost
 
-VII. DỌन DẸP (KHI KHÔNG CẦN THIẾT)
+VII. DỌN DẸP (KHI KHÔNG CẦN THIẾT)
 ==================================
 
 1. Xóa môi trường Dev:
