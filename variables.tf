@@ -46,6 +46,16 @@ variable "db_username" {
 variable "db_password" {
   type        = string
   sensitive   = true
-  default     = "MapAppDev123!"
   description = "Password for RDS MySQL (dev only)"
+}
+
+variable "docdb_username" {
+  type        = string
+  description = "Username for DocumentDB"
+}
+
+variable "docdb_password" {
+  type        = string
+  sensitive   = true
+  description = "Password for DocumentDB (dev only)"
 }

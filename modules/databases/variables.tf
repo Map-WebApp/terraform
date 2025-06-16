@@ -15,6 +15,22 @@ variable "db_password" {
   sensitive = true
 }
 
+variable "docdb_username" {
+  type        = string
+  description = "Username for DocumentDB"
+}
+
+variable "docdb_password" {
+  type        = string
+  description = "Password for DocumentDB"
+  sensitive   = true
+}
+
+variable "eks_node_security_group_id" {
+  type        = string
+  description = "The security group ID of the EKS nodes"
+}
+
 variable "tags" {
   type = map(string)
 }
