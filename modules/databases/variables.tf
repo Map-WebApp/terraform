@@ -13,6 +13,11 @@ variable "private_subnet_ids" {
   type        = list(string)
 }
 
+variable "node_security_group_id" {
+  description = "The security group ID of the EKS nodes to allow database access from."
+  type        = string
+}
+
 # RDS (MySQL) variables
 variable "db_allocated_storage" {
   description = "The allocated storage in gigabytes for the RDS instance."
@@ -30,18 +35,6 @@ variable "db_multi_az" {
   type        = bool
 }
 
-variable "db_username" {
-  description = "The username for the RDS database."
-  type        = string
-  sensitive   = true
-}
-
-variable "db_password" {
-  description = "The password for the RDS database."
-  type        = string
-  sensitive   = true
-}
-
 # DocumentDB variables
 variable "docdb_instance_class" {
   description = "The instance type for the DocumentDB instances."
@@ -51,18 +44,6 @@ variable "docdb_instance_class" {
 variable "docdb_instances" {
   description = "The number of DocumentDB instances to create."
   type        = number
-}
-
-variable "docdb_username" {
-  description = "The username for the DocumentDB cluster."
-  type        = string
-  sensitive   = true
-}
-
-variable "docdb_password" {
-  description = "The password for the DocumentDB cluster."
-  type        = string
-  sensitive   = true
 }
 
 # ElastiCache (Redis) variables
@@ -80,4 +61,4 @@ variable "tags" {
   description = "A map of tags to assign to the resources."
   type        = map(string)
   default     = {}
-} 
+}

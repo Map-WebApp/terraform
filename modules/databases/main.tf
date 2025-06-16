@@ -1,3 +1,17 @@
+# Data source để lấy secrets từ AWS Secrets Manager
+data "aws_secretsmanager_secret" "db_credentials" {
+  name = "mapapp/${var.environment}/db-credentials"
+}
+
+data "aws_secretsmanager_secret_version" "db_credentials" {
+  secret_id = data.aws_secretsmanager_secret.db_credentials.id
+}
+
+# Parse JSON secrets
+locals {
+  db_creds = jsondecode(data.aws_secretsmanager_secret_version.db_credentials.secret_string)
+}
+
 #-------------------------------------------------
 # Security Group for all databases
 #-------------------------------------------------
@@ -6,34 +20,38 @@ resource "aws_security_group" "db_sg" {
   description = "Security group for all databases in the environment"
   vpc_id      = var.vpc_id
 
-  # In a real-world scenario, you would lock this down to specific
-  # security groups (e.g., the EKS worker nodes).
-  # For simplicity here, we allow from within the VPC.
+  # MySQL port
   ingress {
-    protocol    = "tcp"
-    from_port   = 3306 # MySQL
-    to_port     = 3306
-    cidr_blocks = ["10.0.0.0/8"] # Allow from within the VPC range
+    description     = "MySQL from EKS nodes"
+    from_port       = 3306
+    to_port         = 3306
+    protocol        = "tcp"
+    security_groups = [var.node_security_group_id]
   }
 
+  # DocumentDB port
   ingress {
-    protocol    = "tcp"
-    from_port   = 27017 # DocumentDB
-    to_port     = 27017
-    cidr_blocks = ["10.0.0.0/8"]
+    description     = "DocumentDB from EKS nodes"
+    from_port       = 27017
+    to_port         = 27017
+    protocol        = "tcp"
+    security_groups = [var.node_security_group_id]
   }
 
+  # Redis port
   ingress {
-    protocol    = "tcp"
-    from_port   = 6379 # Redis
-    to_port     = 6379
-    cidr_blocks = ["10.0.0.0/8"]
+    description     = "Redis from EKS nodes"
+    from_port       = 6379
+    to_port         = 6379
+    protocol        = "tcp"
+    security_groups = [var.node_security_group_id]
   }
 
   egress {
-    protocol    = "-1"
+    description = "All outbound traffic"
     from_port   = 0
     to_port     = 0
+    protocol    = "-1"
     cidr_blocks = ["0.0.0.0/0"]
   }
 
@@ -56,8 +74,8 @@ resource "aws_db_instance" "mysql" {
   instance_class       = var.db_instance_class
   engine               = "mysql"
   engine_version       = "8.0"
-  username             = var.db_username
-  password             = var.db_password
+  username             = local.db_creds.mysql_username
+  password             = local.db_creds.mysql_password
   db_subnet_group_name = aws_db_subnet_group.rds_subnet_group.name
   vpc_security_group_ids = [aws_security_group.db_sg.id]
   multi_az             = var.db_multi_az
@@ -78,8 +96,8 @@ resource "aws_docdb_subnet_group" "docdb_subnet_group" {
 resource "aws_docdb_cluster" "docdb" {
   cluster_identifier      = "mapapp-${var.environment}-docdb"
   engine                  = "docdb"
-  master_username         = var.docdb_username
-  master_password         = var.docdb_password
+  master_username         = local.db_creds.docdb_username
+  master_password         = local.db_creds.docdb_password
   db_subnet_group_name    = aws_docdb_subnet_group.docdb_subnet_group.name
   vpc_security_group_ids  = [aws_security_group.db_sg.id]
   skip_final_snapshot     = true
