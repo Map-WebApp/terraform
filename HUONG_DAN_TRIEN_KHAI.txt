@@ -432,5 +432,127 @@ CHÚ Ý QUAN TRỌNG:
 - Sử dụng môi trường Dev để test trước khi lên Prod
 
 =================================================================
+QUAN TRỌNG - HƯỚNG DẪN HỦY MÔI TRƯỜNG (TERRAFORM DESTROY)
+=================================================================
+
+*** CẢNH BÁO: ĐỌC KỸ TRƯỚC KHI CHẠY TERRAFORM DESTROY ***
+
+**BƯỚC QUAN TRỌNG - PHẢI LÀM TRƯỚC KHI TERRAFORM DESTROY:**
+
+1. **Dọn dẹp Kubernetes workloads (nếu có deploy ứng dụng):**
+   
+   a) Kiểm tra các Load Balancers được tạo bởi Kubernetes:
+      kubectl get svc --all-namespaces -o wide
+      # Tìm các service có type=LoadBalancer
+   
+   b) Xóa các Load Balancer services:
+      kubectl delete svc <service-name> -n <namespace>
+      # Hoặc xóa toàn bộ namespace nếu có:
+      kubectl delete namespace <your-app-namespace>
+   
+   c) Kiểm tra và xóa ArgoCD (nếu có cài đặt):
+      # Lấy password ArgoCD admin
+      kubectl -n argo get secret argocd-initial-admin-secret -o jsonpath="{.data.password}" | base64 -d
+      
+      # Port forward để truy cập ArgoCD UI
+      kubectl port-forward svc/argocd-server 30081:80 -n argo
+      
+      # Xóa ArgoCD apps trước
+      helm uninstall argocd-apps -n argo
+      
+      # Xóa ArgoCD
+      kubectl delete namespace argo
+
+2. **LƯU Ý QUAN TRỌNG - Xóa Target Groups và Load Balancers thủ công:**
+   
+   a) Liệt kê Target Groups:
+      aws elbv2 describe-target-groups --query 'TargetGroups[?contains(TargetGroupName,`mapapp`)]'
+   
+   b) Xóa Target Groups (nếu có):
+      aws elbv2 delete-target-group --target-group-arn <target-group-arn>
+   
+   c) Liệt kê Load Balancers:
+      aws elbv2 describe-load-balancers --query 'LoadBalancers[?contains(LoadBalancerName,`mapapp`)]'
+   
+   d) Xóa Load Balancers (nếu có):
+      aws elbv2 delete-load-balancer --load-balancer-arn <load-balancer-arn>
+
+3. **Kiểm tra và xóa PersistentVolumes:**
+   
+   a) Liệt kê PVs:
+      kubectl get pv
+   
+   b) Xóa PVCs trước:
+      kubectl delete pvc --all --all-namespaces
+   
+   c) Đợi PVs tự động xóa hoặc xóa thủ công:
+      kubectl delete pv <pv-name>
+
+**THỰC HIỆN TERRAFORM DESTROY:**
+
+4. **Xóa môi trường Dev:**
+   cd environments/dev
+   
+   # Kiểm tra trước khi xóa
+   terraform plan -destroy -var-file="terraform.tfvars"
+   
+   # Xóa (thêm -auto-approve nếu chắc chắn)
+   terraform destroy -var-file="terraform.tfvars"
+
+5. **Xóa môi trường Prod:**
+   cd environments/prod
+   
+   # Kiểm tra trước khi xóa
+   terraform plan -destroy -var-file="terraform.tfvars"
+   
+   # Xóa (thêm -auto-approve nếu chắc chắn)
+   terraform destroy -var-file="terraform.tfvars"
+
+**CÁC LỖI THƯỜNG GẶP KHI DESTROY:**
+
+6. **Nếu gặp lỗi "resource still has dependencies":**
+   
+   a) Xóa từng resource cụ thể:
+      terraform destroy -target=module.databases -var-file="terraform.tfvars"
+      terraform destroy -target=module.eks -var-file="terraform.tfvars"
+      terraform destroy -target=module.vpc -var-file="terraform.tfvars"
+   
+   b) Chờ một chút giữa các lần destroy để AWS xử lý
+
+7. **Nếu Load Balancer không tự xóa:**
+   
+   # Vào AWS Console -> EC2 -> Load Balancers -> Xóa thủ công
+   # Hoặc dùng CLI như bước 2 ở trên
+
+8. **Nếu Security Group không xóa được:**
+   
+   # Xóa tất cả inbound/outbound rules trước
+   aws ec2 revoke-security-group-ingress --group-id <sg-id> --ip-permissions file://revoke-rules.json
+
+**SAU KHI TERRAFORM DESTROY HOÀN THÀNH:**
+
+9. **Xóa S3 bucket và DynamoDB table (nếu không cần lưu state):**
+   
+   # Xóa tất cả objects trong S3 bucket trước
+   aws s3 rm s3://mapapp-terraform-state-storage --recursive
+   
+   # Xóa S3 bucket
+   aws s3 rb s3://mapapp-terraform-state-storage --force
+   
+   # Xóa DynamoDB table
+   aws dynamodb delete-table --table-name mapapp-terraform-state-lock
+
+10. **Kiểm tra tài nguyên còn sót lại:**
+    
+    a) Kiểm tra EBS volumes:
+       aws ec2 describe-volumes --filters "Name=tag:Name,Values=*mapapp*" --query 'Volumes[*].[VolumeId,State,Tags]'
+    
+    b) Kiểm tra Elastic IPs:
+       aws ec2 describe-addresses --query 'Addresses[?contains(to_string(Tags),`mapapp`)]'
+    
+    c) Kiểm tra Network Interfaces:
+       aws ec2 describe-network-interfaces --filters "Name=description,Values=*mapapp*" --query 'NetworkInterfaces[*].[NetworkInterfaceId,Status]'
+
+=================================================================
 KẾT THÚC HƯỚNG DẪN
 =================================================================
