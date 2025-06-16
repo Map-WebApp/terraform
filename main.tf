@@ -21,9 +21,12 @@ module "eks" {
 module "databases" {
   source = "./modules/databases"
 
-  vpc_id             = module.networking.vpc_id
-  private_subnet_ids = module.networking.private_subnet_ids
-  db_username        = var.db_username
-  db_password        = var.db_password
-  tags               = var.tags
+  vpc_id                     = module.networking.vpc_id
+  private_subnet_ids         = module.networking.private_subnet_ids
+  eks_node_security_group_id = module.eks.node_security_group_id
+  db_username                = var.db_username
+  db_password                = var.db_password
+  docdb_username             = var.docdb_username
+  docdb_password             = var.docdb_password
+  tags                       = var.tags
 }

@@ -17,21 +17,21 @@ resource "aws_security_group" "db" {
     from_port       = 3306
     to_port         = 3306
     protocol        = "tcp"
-    cidr_blocks     = ["10.0.0.0/16"]
+    security_groups = [var.eks_node_security_group_id]
   }
 
   ingress {
-    from_port   = 27017
-    to_port     = 27017
-    protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
+    from_port       = 27017
+    to_port         = 27017
+    protocol        = "tcp"
+    security_groups = [var.eks_node_security_group_id]
   }
 
   ingress {
-    from_port   = 6379
-    to_port     = 6379
-    protocol    = "tcp"
-    cidr_blocks = ["10.0.0.0/16"]
+    from_port       = 6379
+    to_port         = 6379
+    protocol        = "tcp"
+    security_groups = [var.eks_node_security_group_id]
   }
 
   egress {
@@ -69,8 +69,8 @@ resource "aws_docdb_subnet_group" "docdb" {
 
 resource "aws_docdb_cluster" "docdb" {
   cluster_identifier      = "mapapp-dev-docdb"
-  master_username         = var.db_username
-  master_password         = var.db_password
+  master_username         = var.docdb_username
+  master_password         = var.docdb_password
   db_subnet_group_name    = aws_docdb_subnet_group.docdb.name
   vpc_security_group_ids  = [aws_security_group.db.id]
   skip_final_snapshot     = true
