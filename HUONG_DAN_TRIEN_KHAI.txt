@@ -2,6 +2,9 @@
 HƯỚNG DẪN TRIỂN KHAI TERRAFORM CHO DỰ ÁN MAPAPP-DEVSECOPS
 =================================================================
 
+*** REGION: US-EAST-1 (N. VIRGINIA) ***
+Project đã được cấu hình để sử dụng region us-east-1
+
 *** QUAN TRỌNG VỀ BẢO MẬT KEY-PAIR VÀ SECRETS ***
 
 KHI TRIỂN KHAI TERRAFORM NÀY:
@@ -36,11 +39,19 @@ I. CHUẨN BỊ BAN ĐẦU
    aws configure
    # Nhập AWS Access Key ID
    # Nhập AWS Secret Access Key
-   # Region: ap-southeast-1
+   # Region: us-east-1
    # Output format: json
 
-3. Kiểm tra kết nối AWS:
+3. Kiểm tra kết nối AWS và region:
+   
+   **CÁCH NHANH - Sử dụng script kiểm tra:**
+   cd C:\DevOps\DoAn\devsecops-maps-webapp\mapapp-devsecops\terraform
+   .\check-aws-access.ps1
+   
+   **CÁCH THỦ CÔNG:**
    aws sts get-caller-identity
+   aws configure get region
+   # Đảm bảo region là us-east-1
    
    Kết quả mong đợi:
    {
@@ -184,7 +195,7 @@ I. CHUẨN BỊ BAN ĐẦU
 
 1. **Truy cập AWS Console:**
    - Đăng nhập vào https://console.aws.amazon.com
-   - Chuyển đến region ap-southeast-1 (Singapore)
+   - Chuyển đến region us-east-1 (N. Virginia)
    - Tìm kiếm "Secrets Manager"
 
 2. **Tạo Secret cho DEV:**
@@ -248,8 +259,7 @@ II. THIẾT LẬP BACKEND TERRAFORM (BƯỚC QUAN TRỌNG NHẤT)
 1. Tạo S3 Bucket cho Terraform State:
    aws s3api create-bucket \
      --bucket mapapp-terraform-state-storage \
-     --region ap-southeast-1 \
-     --create-bucket-configuration LocationConstraint=ap-southeast-1
+     --region us-east-1
 
    Kết quả mong đợi:
    {
@@ -331,7 +341,7 @@ III. TRIỂN KHAI MÔI TRƯỜNG DEV
       Kết quả mong đợi: 1 VPC với CIDR 10.0.0.0/16
 
    b) Kiểm tra EKS Cluster:
-      aws eks describe-cluster --name mapapp-dev-eks --region ap-southeast-1
+      aws eks describe-cluster --name mapapp-dev-eks --region us-east-1
       
       Kết quả mong đợi: Status "ACTIVE"
 
@@ -356,15 +366,13 @@ III. TRIỂN KHAI MÔI TRƯỜNG DEV
       Kết quả mong đợi: CacheClusterStatus "available"
 
 6. Cấu hình kubectl cho EKS:
-   aws eks update-kubeconfig --region ap-southeast-1 --name mapapp-dev-eks
+   aws eks update-kubeconfig --region us-east-1 --name mapapp-dev-eks
 
 7. Kiểm tra kết nối Kubernetes:
-   kubectl get nodes
-
-   Kết quả mong đợi:
+   kubectl get nodes   Kết quả mong đợi:
    NAME                                         STATUS   ROLES    AGE   VERSION
-   ip-10-0-101-xxx.ap-southeast-1.compute...   Ready    <none>   5m    v1.30.x
-   ip-10-0-102-xxx.ap-southeast-1.compute...   Ready    <none>   5m    v1.30.x
+   ip-10-0-101-xxx.us-east-1.compute...   Ready    <none>   5m    v1.30.x
+   ip-10-0-102-xxx.us-east-1.compute...   Ready    <none>   5m    v1.30.x
 
 8. Kiểm tra pods hệ thống:
    kubectl get pods -n kube-system

@@ -10,8 +10,8 @@
 terraform {
   backend "s3" {
     bucket         = "mapapp-terraform-state-storage" # Please replace with your unique bucket name
-    region         = "ap-southeast-1"
+    region         = "us-east-1"
     dynamodb_table = "mapapp-terraform-state-lock"
     encrypt        = true
   }
-} 
+}
