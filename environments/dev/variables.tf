@@ -97,13 +97,6 @@ variable "db_username" {
   default     = "admin"
 }
 
-variable "db_password" {
-  description = "Database master password"
-  type        = string
-  sensitive   = true
-  default     = "DevPassw0rd!"
-}
-
 variable "docdb_instance_class" {
   description = "DocumentDB instance class"
   type        = string
@@ -120,13 +113,6 @@ variable "docdb_username" {
   description = "DocumentDB master username"
   type        = string
   default     = "admin"
-}
-
-variable "docdb_password" {
-  description = "DocumentDB master password"
-  type        = string
-  sensitive   = true
-  default     = "DevPassw0rd!"
 }
 
 variable "redis_node_type" {
