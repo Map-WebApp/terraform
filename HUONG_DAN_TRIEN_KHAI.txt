@@ -105,30 +105,142 @@ I. CHUẨN BỊ BAN ĐẦU
 
    Database passwords KHÔNG được hardcode trong code. Sử dụng AWS Secrets Manager:
    
-   a) Tạo secret cho DEV environment:
-      aws secretsmanager create-secret \
-        --name "mapapp/dev/db-credentials" \
-        --description "Database credentials for MapApp DEV" \
-        --secret-string '{
-          "db_username": "admin",
-          "db_password": "Dev-SecurePass-2025!",
-          "docdb_username": "admin", 
-          "docdb_password": "Dev-DocDB-SecurePass-2025!"
-        }'
+   **TRƯỚC TIÊN - Kiểm tra quyền AWS:**
+   aws sts get-caller-identity
+   # Đảm bảo user có quyền tạo secrets
    
-   b) Tạo secret cho PROD environment:
-      aws secretsmanager create-secret \
-        --name "mapapp/prod/db-credentials" \
-        --description "Database credentials for MapApp PROD" \
-        --secret-string '{
-          "db_username": "admin",
-          "db_password": "Prod-Ultra-SecurePass-2025!@#",
-          "docdb_username": "admin",
-          "docdb_password": "Prod-DocDB-Ultra-SecurePass-2025!@#"
-        }'
+   a) **Tạo secret cho DEV environment (Windows PowerShell):**
+      
+      **Cách 1 - Lệnh một dòng:**
+      aws secretsmanager create-secret --name "mapapp/dev/db-credentials" --description "Database credentials for MapApp DEV" --secret-string "{\"mysql_username\": \"admin\", \"mysql_password\": \"Dev-SecurePass-2025!\", \"docdb_username\": \"admin\", \"docdb_password\": \"Dev-DocDB-SecurePass-2025!\"}"
+      
+      **Cách 2 - Sử dụng file JSON (khuyến nghị):**
+      # Tạo file secret-dev.json:
+      @"
+{
+  "mysql_username": "admin",
+  "mysql_password": "Dev-SecurePass-2025!",
+  "docdb_username": "admin",
+  "docdb_password": "Dev-DocDB-SecurePass-2025!"
+}
+"@ | Out-File -FilePath "secret-dev.json" -Encoding UTF8
+      
+      # Tạo secret từ file:
+      aws secretsmanager create-secret --name "mapapp/dev/db-credentials" --description "Database credentials for MapApp DEV" --secret-string file://secret-dev.json
+      
+      # Xóa file sau khi tạo (bảo mật):
+      Remove-Item "secret-dev.json"
+   
+   b) **Tạo secret cho PROD environment (Windows PowerShell):**
+      
+      **Cách 1 - Lệnh một dòng:**
+      aws secretsmanager create-secret --name "mapapp/prod/db-credentials" --description "Database credentials for MapApp PROD" --secret-string "{\"mysql_username\": \"admin\", \"mysql_password\": \"Prod-Ultra-SecurePass-2025!@#\", \"docdb_username\": \"admin\", \"docdb_password\": \"Prod-DocDB-Ultra-SecurePass-2025!@#\"}"
+      
+      **Cách 2 - Sử dụng file JSON (khuyến nghị):**
+      # Tạo file secret-prod.json:
+      @"
+{
+  "mysql_username": "admin",
+  "mysql_password": "Prod-Ultra-SecurePass-2025!@#",
+  "docdb_username": "admin",
+  "docdb_password": "Prod-DocDB-Ultra-SecurePass-2025!@#"
+}
+"@ | Out-File -FilePath "secret-prod.json" -Encoding UTF8
+      
+      # Tạo secret từ file:
+      aws secretsmanager create-secret --name "mapapp/prod/db-credentials" --description "Database credentials for MapApp PROD" --secret-string file://secret-prod.json
+      
+      # Xóa file sau khi tạo (bảo mật):
+      Remove-Item "secret-prod.json"
+   
+   c) **Kiểm tra secrets đã tạo:**
+      aws secretsmanager list-secrets --query "SecretList[?contains(Name, 'mapapp')]"
+   
+   d) **Nếu gặp lỗi quyền (AccessDeniedException):**
+      
+      **Lỗi thường gặp:**
+      - "User is not authorized to perform: secretsmanager:CreateSecret"
+      - "explicit deny in a service control policy"
+      
+      **Cách khắc phục:**
+      1) Liên hệ AWS Admin để cấp quyền SecretsManager
+      2) Hoặc tạo secrets thông qua AWS Console:
+         - Vào AWS Console -> Secrets Manager
+         - Click "Store a new secret"
+         - Chọn "Other type of secret"
+         - Nhập key-value pairs như trên
+         - Đặt tên: mapapp/dev/db-credentials hoặc mapapp/prod/db-credentials
+      
+      3) **Cách tạm thời (KHÔNG khuyến nghị cho production):**
+         Nếu không thể tạo secrets, có thể tạm thời dùng environment variables:
+         
+         **PowerShell:**
+         $env:TF_VAR_mysql_password="Dev-SecurePass-2025!"
+         $env:TF_VAR_docdb_password="Dev-DocDB-SecurePass-2025!"
+           Nhưng cần sửa module databases để sử dụng var thay vì data source.   c) Kiểm tra secrets đã tạo:
+      aws secretsmanager list-secrets --query "SecretList[?contains(Name, 'mapapp')]"
 
-   c) Kiểm tra secrets đã tạo:
-      aws secretsmanager list-secrets --query 'SecretList[?Name==`mapapp/dev/db-credentials`]'
+**HƯỚNG DẪN TẠO SECRETS QUA AWS CONSOLE (NẾU GẶP LỖI QUYỀN):**
+
+1. **Truy cập AWS Console:**
+   - Đăng nhập vào https://console.aws.amazon.com
+   - Chuyển đến region ap-southeast-1 (Singapore)
+   - Tìm kiếm "Secrets Manager"
+
+2. **Tạo Secret cho DEV:**
+   - Click "Store a new secret"
+   - Chọn "Other type of secret"
+   - Chọn "Plaintext" tab
+   - Paste nội dung JSON:
+   ```json
+   {
+     "mysql_username": "admin",
+     "mysql_password": "Dev-SecurePass-2025!",
+     "docdb_username": "admin",
+     "docdb_password": "Dev-DocDB-SecurePass-2025!"
+   }
+   ```
+   - Click "Next"
+   - Secret name: `mapapp/dev/db-credentials`
+   - Description: `Database credentials for MapApp DEV`
+   - Click "Next" -> "Next" -> "Store"
+
+3. **Tạo Secret cho PROD:**
+   - Lặp lại các bước trên với:
+   - Secret name: `mapapp/prod/db-credentials`
+   - Description: `Database credentials for MapApp PROD`
+   - JSON content:
+   ```json
+   {
+     "mysql_username": "admin",
+     "mysql_password": "Prod-Ultra-SecurePass-2025!@#",
+     "docdb_username": "admin",
+     "docdb_password": "Prod-DocDB-Ultra-SecurePass-2025!@#"
+   }
+   ```
+
+4. **Xác nhận secrets đã tạo:**
+   - Trong Secrets Manager, bạn sẽ thấy 2 secrets:
+     - mapapp/dev/db-credentials
+     - mapapp/prod/db-credentials
+
+**CÁCH DỄ NHẤT - SỬ DỤNG SCRIPT POWERSHELL:**
+
+Tôi đã tạo sẵn script PowerShell để tự động tạo secrets. Chạy lệnh:
+
+```powershell
+# Di chuyển đến thư mục terraform
+cd C:\DevOps\DoAn\devsecops-maps-webapp\mapapp-devsecops\terraform
+
+# Chạy script tạo secrets
+.\create-secrets.ps1
+```
+
+Script này sẽ:
+- Kiểm tra AWS CLI
+- Tạo secrets cho cả DEV và PROD
+- Xử lý lỗi và đưa ra hướng dẫn khắc phục
+- Tự động xóa file tạm thời (bảo mật)
 
 II. THIẾT LẬP BACKEND TERRAFORM (BƯỚC QUAN TRỌNG NHẤT)
 ======================================================
