@@ -2,6 +2,14 @@
 HƯỚNG DẪN TRIỂN KHAI TERRAFORM CHO DỰ ÁN MAPAPP-DEVSECOPS
 =================================================================
 
+*** QUAN TRỌNG VỀ BẢO MẬT KEY-PAIR VÀ SECRETS ***
+
+KHI TRIỂN KHAI TERRAFORM NÀY:
+1. Key-pair được tạo cho EKS nodes chỉ sử dụng PUBLIC KEY
+2. Private key KHÔNG được tạo bởi Terraform, phải tự tạo và quản lý
+3. Database passwords KHÔNG được hardcode, sử dụng AWS Secrets Manager
+4. Không có secret keys nào được lưu trong code hoặc state file
+
 I. CHUẨN BỊ BAN ĐẦU
 ===================
 
@@ -27,6 +35,56 @@ I. CHUẨN BỊ BAN ĐẦU
        "Account": "123456789012",
        "Arn": "arn:aws:iam::123456789012:user/your-username"
    }
+
+4. **QUAN TRỌNG - TẠO VÀ QUẢN LÝ SSH KEY-PAIR AN TOÀN:**
+   
+   a) Tạo SSH key pair mới (THỦ CÔNG):
+      ssh-keygen -t rsa -b 4096 -f ~/.ssh/mapapp-key-dev
+      ssh-keygen -t rsa -b 4096 -f ~/.ssh/mapapp-key-prod
+      
+   b) Xem public key:
+      cat ~/.ssh/mapapp-key-dev.pub
+      cat ~/.ssh/mapapp-key-prod.pub
+      
+   c) Copy nội dung public key để dán vào terraform.tfvars
+   
+   **CỰC KỲ QUAN TRỌNG:** 
+   - Private key (~/.ssh/mapapp-key-*) là BÍ MẬT TUYỆT ĐỐI
+   - KHÔNG BAO GIỜ commit private key vào Git
+   - KHÔNG chia sẻ private key qua email/slack
+   - Lưu private key ở nơi an toàn, có backup
+   - Chỉ public key được sử dụng trong Terraform
+   - Terraform chỉ tạo AWS Key Pair resource từ public key
+   - Các EKS nodes sẽ sử dụng key này để SSH (nếu cần)
+
+5. **QUAN TRỌNG - QUẢN LÝ DATABASE SECRETS AN TOÀN:**
+
+   Database passwords KHÔNG được hardcode trong code. Sử dụng AWS Secrets Manager:
+   
+   a) Tạo secret cho DEV environment:
+      aws secretsmanager create-secret \
+        --name "mapapp/dev/db-credentials" \
+        --description "Database credentials for MapApp DEV" \
+        --secret-string '{
+          "db_username": "admin",
+          "db_password": "Dev-SecurePass-2025!",
+          "docdb_username": "admin", 
+          "docdb_password": "Dev-DocDB-SecurePass-2025!"
+        }'
+   
+   b) Tạo secret cho PROD environment:
+      aws secretsmanager create-secret \
+        --name "mapapp/prod/db-credentials" \
+        --description "Database credentials for MapApp PROD" \
+        --secret-string '{
+          "db_username": "admin",
+          "db_password": "Prod-Ultra-SecurePass-2025!@#",
+          "docdb_username": "admin",
+          "docdb_password": "Prod-DocDB-Ultra-SecurePass-2025!@#"
+        }'
+
+   c) Kiểm tra secrets đã tạo:
+      aws secretsmanager list-secrets --query 'SecretList[?Name==`mapapp/dev/db-credentials`]'
 
 II. THIẾT LẬP BACKEND TERRAFORM (BƯỚC QUAN TRỌNG NHẤT)
 ======================================================
@@ -238,7 +296,77 @@ VII. DỌन DẸP (KHI KHÔNG CẦN THIẾT)
    aws s3 rb s3://mapapp-terraform-state-storage --force
    aws dynamodb delete-table --table-name mapapp-terraform-state-lock
 
-VIII. LIÊN HỆ VÀ HỖ TRỢ
+VIII. GIẢI THÍCH CHI TIẾT VỀ KEY-PAIR VÀ SECRETS
+==============================================
+
+** CÂU HỎI THƯỜNG GẶP: Key-pair và Secrets được lưu ở đâu? **
+
+1. **SSH KEY-PAIR:**
+   a) Private Key:
+      - Được lưu trên máy local của bạn (ví dụ: ~/.ssh/mapapp-key-dev)
+      - KHÔNG được Terraform tạo ra hay quản lý
+      - KHÔNG được lưu trong AWS hoặc code repository
+      - Bạn hoàn toàn chịu trách nhiệm bảo vệ private key này
+   
+   b) Public Key:
+      - Được đưa vào terraform.tfvars
+      - Terraform sử dụng để tạo AWS Key Pair resource
+      - Được lưu trong AWS EC2 Key Pairs
+      - EKS nodes sử dụng key này để SSH access
+   
+   c) Terraform chỉ tạo:
+      - AWS Key Pair resource (aws_key_pair)
+      - Resource này chỉ chứa public key và metadata
+      - KHÔNG tạo ra private key mới
+
+2. **DATABASE SECRETS:**
+   a) Passwords được lưu trong:
+      - AWS Secrets Manager (service được mã hóa)
+      - Mã hóa tự động bởi AWS KMS
+      - Truy cập controlled bởi IAM policies
+   
+   b) Terraform:
+      - Sử dụng data source để ĐỌC secrets từ Secrets Manager
+      - KHÔNG tạo ra passwords mới
+      - KHÔNG lưu passwords trong state file
+   
+   c) Security benefits:
+      - Passwords được rotate dễ dàng
+      - Audit trail đầy đủ
+      - Không có hardcode passwords trong code
+
+3. **TERRAFORM STATE FILE:**
+   - KHÔNG chứa private keys
+   - KHÔNG chứa plaintext passwords
+   - Chỉ chứa resource IDs và public information
+   - Vẫn cần được bảo vệ (lưu trong S3 encrypted)
+
+4. **QUY TRÌNH BẢO MẬT:**
+   a) Trước khi chạy Terraform:
+      - Tạo SSH key-pair thủ công
+      - Tạo database secrets trong AWS Secrets Manager
+   
+   b) Khi chạy Terraform:
+      - Terraform đọc public key từ terraform.tfvars
+      - Terraform đọc passwords từ Secrets Manager
+      - Tạo resources với thông tin này
+   
+   c) Sau khi triển khai:
+      - Private key vẫn ở máy local của bạn
+      - Passwords vẫn ở Secrets Manager
+      - Có thể SSH vào nodes bằng private key
+      - Ứng dụng có thể đọc DB passwords từ Secrets Manager
+
+5. **CÁCH TRUY CẬP:**
+   a) SSH vào EKS nodes:
+      ssh -i ~/.ssh/mapapp-key-dev ec2-user@<node-ip>
+   
+   b) Get database passwords:
+      aws secretsmanager get-secret-value \
+        --secret-id mapapp/dev/db-credentials \
+        --query SecretString --output text | jq .
+
+IX. LIÊN HỆ VÀ HỖ TRỢ
 =======================
 
 Nếu gặp vấn đề trong quá trình triển khai:
