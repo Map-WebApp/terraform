@@ -18,6 +18,19 @@ I. CHUẨN BỊ BAN ĐẦU
    - Terraform >= 1.0 đã cài đặt
    - kubectl đã cài đặt
    - Git đã cài đặt
+   - OpenSSH client (cho Windows)
+
+   **Cài đặt OpenSSH trên Windows (nếu chưa có):**
+   
+   **Phương pháp 1 - Windows 10/11 (PowerShell với quyền Admin):**
+   Add-WindowsCapability -Online -Name OpenSSH.Client~~~~0.0.1.0
+   
+   **Phương pháp 2 - Sử dụng Chocolatey:**
+   choco install openssh
+   
+   **Phương pháp 3 - Kiểm tra đã có ssh chưa:**
+   ssh -V
+   # Nếu có kết quả như "OpenSSH_for_Windows_8.1p1" là đã có SSH
 
 2. Cấu hình AWS CLI:
    aws configure
@@ -38,15 +51,46 @@ I. CHUẨN BỊ BAN ĐẦU
 
 4. **QUAN TRỌNG - TẠO VÀ QUẢN LÝ SSH KEY-PAIR AN TOÀN:**
    
-   a) Tạo SSH key pair mới (THỦ CÔNG):
+   a) Tạo thư mục lưu key (Windows):
+      **PowerShell:**
+      New-Item -ItemType Directory -Force -Path "C:\DevOps\DoAn\Key"
+      
+      **CMD:**
+      mkdir "C:\DevOps\DoAn\Key" 2>nul
+   
+   b) Tạo SSH key pair mới (THỦ CÔNG):
+      **Linux/Mac:**
       ssh-keygen -t rsa -b 4096 -f ~/.ssh/mapapp-key-dev
       ssh-keygen -t rsa -b 4096 -f ~/.ssh/mapapp-key-prod
       
-   b) Xem public key:
+      **Windows PowerShell:**
+      ssh-keygen -t rsa -b 4096 -f "C:\DevOps\DoAn\Key\mapapp-key-dev"
+      ssh-keygen -t rsa -b 4096 -f "C:\DevOps\DoAn\Key\mapapp-key-prod"
+      
+      **Windows CMD:**
+      ssh-keygen -t rsa -b 4096 -f "C:\DevOps\DoAn\Key\mapapp-key-dev"
+      ssh-keygen -t rsa -b 4096 -f "C:\DevOps\DoAn\Key\mapapp-key-prod"
+      
+   c) Xem public key:
+      **Linux/Mac:**
       cat ~/.ssh/mapapp-key-dev.pub
       cat ~/.ssh/mapapp-key-prod.pub
       
-   c) Copy nội dung public key để dán vào terraform.tfvars
+      **Windows PowerShell:**
+      Get-Content "C:\DevOps\DoAn\Key\mapapp-key-dev.pub"
+      Get-Content "C:\DevOps\DoAn\Key\mapapp-key-prod.pub"
+      
+      **Windows CMD:**
+      type "C:\DevOps\DoAn\Key\mapapp-key-dev.pub"
+      type "C:\DevOps\DoAn\Key\mapapp-key-prod.pub"
+      
+   d) Copy nội dung public key để dán vào terraform.tfvars
+   
+   e) **Đặt quyền bảo mật cho private key (Windows):**
+      **PowerShell (chạy với quyền Administrator):**
+      # Chỉ cho phép user hiện tại truy cập private key
+      icacls "C:\DevOps\DoAn\Key\mapapp-key-dev" /inheritance:r /grant:r "%USERNAME%:F"
+      icacls "C:\DevOps\DoAn\Key\mapapp-key-prod" /inheritance:r /grant:r "%USERNAME%:F"
    
    **CỰC KỲ QUAN TRỌNG:** 
    - Private key (~/.ssh/mapapp-key-*) là BÍ MẬT TUYỆT ĐỐI
@@ -359,9 +403,14 @@ VIII. GIẢI THÍCH CHI TIẾT VỀ KEY-PAIR VÀ SECRETS
 
 5. **CÁCH TRUY CẬP:**
    a) SSH vào EKS nodes:
+      **Linux/Mac:**
       ssh -i ~/.ssh/mapapp-key-dev ec2-user@<node-ip>
+      
+      **Windows PowerShell/CMD:**
+      ssh -i "C:\DevOps\DoAn\Key\mapapp-key-dev" ec2-user@<node-ip>
    
    b) Get database passwords:
+      **Linux/Mac/Windows PowerShell/CMD:**
       aws secretsmanager get-secret-value \
         --secret-id mapapp/dev/db-credentials \
         --query SecretString --output text | jq .
