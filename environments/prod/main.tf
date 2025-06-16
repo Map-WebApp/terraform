@@ -3,7 +3,7 @@ terraform {
   backend "s3" {
     bucket         = "mapapp-terraform-state-storage"
     key            = "prod/terraform.tfstate"
-    region         = "ap-southeast-1"
+    region         = "us-east-1"
     dynamodb_table = "mapapp-terraform-state-lock"
     encrypt        = true
   }

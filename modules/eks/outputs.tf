@@ -26,3 +26,8 @@ output "oidc_provider_url" {
   description = "The URL of the OIDC provider."
   value       = module.eks.oidc_provider
 }
+
+output "cluster_certificate_authority_data" {
+  description = "The base64 encoded certificate data required to communicate with the cluster."
+  value       = module.eks.cluster_certificate_authority_data
+}
