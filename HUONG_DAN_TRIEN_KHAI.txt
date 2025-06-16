@@ -120,20 +120,22 @@ I. CHUẨN BỊ BAN ĐẦU
    aws sts get-caller-identity
    # Đảm bảo user có quyền tạo secrets   a) **Tạo secret cho DEV environment:**
       
+      **LƯU Ý QUAN TRỌNG:** Username cho DocumentDB không được là "admin". Sử dụng "docdbuser" hoặc một tên khác.
+      
       **CMD (khuyến nghị):**
-      aws secretsmanager create-secret --name "mapapp/dev/db-credentials" --description "Database credentials for MapApp DEV" --secret-string "{\"mysql_username\": \"admin\", \"mysql_password\": \"Dev-SecurePass-2025!\", \"docdb_username\": \"admin\", \"docdb_password\": \"Dev-DocDB-SecurePass-2025!\"}" --region us-east-1
+      aws secretsmanager create-secret --name "mapapp/dev/db-credentials" --description "Database credentials for MapApp DEV" --secret-string "{\"mysql_username\": \"admin\", \"mysql_password\": \"Dev-SecurePass-2025!\", \"docdb_username\": \"docdbuser\", \"docdb_password\": \"Dev-DocDB-SecurePass-2025!\"}" --region us-east-1
       
       **PowerShell (nếu CMD không work):**
-      aws secretsmanager create-secret --name 'mapapp/dev/db-credentials' --description 'Database credentials for MapApp DEV' --secret-string '{\"mysql_username\": \"admin\", \"mysql_password\": \"Dev-SecurePass-2025!\", \"docdb_username\": \"admin\", \"docdb_password\": \"Dev-DocDB-SecurePass-2025!\"}' --region us-east-1
+      aws secretsmanager create-secret --name 'mapapp/dev/db-credentials' --description 'Database credentials for MapApp DEV' --secret-string '{\"mysql_username\": \"admin\", \"mysql_password\": \"Dev-SecurePass-2025!\", \"docdb_username\": \"docdbuser\", \"docdb_password\": \"Dev-DocDB-SecurePass-2025!\"}' --region us-east-1
       
       # Xóa file sau khi tạo (bảo mật):
       Remove-Item "secret-dev.json"   b) **Tạo secret cho PROD environment:**
       
       **CMD (khuyến nghị):**
-      aws secretsmanager create-secret --name "mapapp/prod/db-credentials" --description "Database credentials for MapApp PROD" --secret-string "{\"mysql_username\": \"admin\", \"mysql_password\": \"Prod-Ultra-SecurePass-2025!@#\", \"docdb_username\": \"admin\", \"docdb_password\": \"Prod-DocDB-Ultra-SecurePass-2025!@#\"}" --region us-east-1
+      aws secretsmanager create-secret --name "mapapp/prod/db-credentials" --description "Database credentials for MapApp PROD" --secret-string "{\"mysql_username\": \"admin\", \"mysql_password\": \"Prod-Ultra-SecurePass-2025!@#\", \"docdb_username\": \"docdbuser\", \"docdb_password\": \"Prod-DocDB-Ultra-SecurePass-2025!@#\"}" --region us-east-1
       
       **PowerShell (nếu CMD không work):**
-      aws secretsmanager create-secret --name 'mapapp/prod/db-credentials' --description 'Database credentials for MapApp PROD' --secret-string '{\"mysql_username\": \"admin\", \"mysql_password\": \"Prod-Ultra-SecurePass-2025!@#\", \"docdb_username\": \"admin\", \"docdb_password\": \"Prod-DocDB-Ultra-SecurePass-2025!@#\"}' --region us-east-1
+      aws secretsmanager create-secret --name 'mapapp/prod/db-credentials' --description 'Database credentials for MapApp PROD' --secret-string '{\"mysql_username\": \"admin\", \"mysql_password\": \"Prod-Ultra-SecurePass-2025!@#\", \"docdb_username\": \"docdbuser\", \"docdb_password\": \"Prod-DocDB-Ultra-SecurePass-2025!@#\"}' --region us-east-1
      c) **Kiểm tra secrets đã tạo:**
       aws secretsmanager list-secrets --region us-east-1 --query "SecretList[?contains(Name, 'mapapp')]"
    
@@ -177,7 +179,7 @@ I. CHUẨN BỊ BAN ĐẦU
    {
      "mysql_username": "admin",
      "mysql_password": "Dev-SecurePass-2025!",
-     "docdb_username": "admin",
+     "docdb_username": "docdbuser",
      "docdb_password": "Dev-DocDB-SecurePass-2025!"
    }
    ```
@@ -195,7 +197,7 @@ I. CHUẨN BỊ BAN ĐẦU
    {
      "mysql_username": "admin",
      "mysql_password": "Prod-Ultra-SecurePass-2025!@#",
-     "docdb_username": "admin",
+     "docdb_username": "docdbuser",
      "docdb_password": "Prod-DocDB-Ultra-SecurePass-2025!@#"
    }
    ```
