@@ -1,9 +1,11 @@
+# This module uses the official AWS VPC module to create a VPC, subnets,
+# NAT gateways, and other networking resources.
 module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "5.9.0"
 
   name = var.vpc_name
-  cidr = var.vpc_cidr
+  cidr = var.cidr_block
   azs  = var.azs
 
   private_subnets = var.private_subnet_cidrs

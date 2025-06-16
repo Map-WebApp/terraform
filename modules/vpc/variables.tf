@@ -3,7 +3,7 @@ variable "vpc_name" {
   type        = string
 }
 
-variable "vpc_cidr" {
+variable "cidr_block" {
   description = "The CIDR block for the VPC."
   type        = string
 }
@@ -30,9 +30,9 @@ variable "enable_nat_gateway" {
 }
 
 variable "single_nat_gateway" {
-  description = "Set to true to create a single NAT Gateway."
+  description = "Set to true to create a single NAT Gateway for cost savings."
   type        = bool
-  default     = true
+  default     = false
 }
 
 variable "tags" {
