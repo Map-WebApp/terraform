@@ -1,5 +1,10 @@
+variable "efs_name" {
+  description = "The name for the EFS file system."
+  type        = string
+}
+
 variable "vpc_id" {
-  description = "The ID of the VPC."
+  description = "The ID of the VPC where to create the EFS."
   type        = string
 }
 
@@ -8,15 +13,9 @@ variable "subnet_ids" {
   type        = list(string)
 }
 
-variable "node_sg_id" {
-  description = "The security group ID of the EKS nodes to allow access from."
+variable "node_security_group_id" {
+  description = "The security group ID of the EKS nodes to allow NFS access from."
   type        = string
-}
-
-variable "efs_name" {
-  description = "The name for the EFS file system."
-  type        = string
-  default     = "mapapp-efs"
 }
 
 variable "tags" {
