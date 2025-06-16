@@ -9,3 +9,7 @@ output "cluster_endpoint" {
 output "jenkins_role_arn" {
   value = aws_iam_role.jenkins_irsa.arn
 }
+
+output "node_security_group_id" {
+  value = module.eks.node_security_group_id
+}
