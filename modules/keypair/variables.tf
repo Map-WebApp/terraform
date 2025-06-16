@@ -1,9 +1,9 @@
 variable "key_name" {
-  description = "The name for the key pair."
+  description = "The name for the EC2 key pair."
   type        = string
 }
 
-variable "public_key_path" {
-  description = "The path to the public key file."
+variable "public_key" {
+  description = "The public key material."
   type        = string
 } 
