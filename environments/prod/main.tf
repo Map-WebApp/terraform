@@ -94,18 +94,15 @@ module "databases" {
   environment         = var.environment
   vpc_id             = module.vpc.vpc_id
   private_subnet_ids = module.vpc.private_subnet_ids
+  node_security_group_id = module.eks.node_security_group_id
 
   # RDS MySQL Configuration - Multi-AZ enabled
   db_instance_class = var.db_instance_class
   db_multi_az       = var.db_multi_az
-  db_username       = var.db_username
-  db_password       = var.db_password
 
   # DocumentDB Configuration - 3 instances cluster
   docdb_instance_class = var.docdb_instance_class
   docdb_instances     = var.docdb_instances
-  docdb_username      = var.docdb_username
-  docdb_password      = var.docdb_password
 
   # Redis Configuration - With replicas
   redis_node_type = var.redis_node_type
