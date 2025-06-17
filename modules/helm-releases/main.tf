@@ -17,12 +17,17 @@ resource "helm_release" "aws_load_balancer_controller" {
 
   set {
     name  = "serviceAccount.create"
-    value = "true"
+    value = "false"
   }
 
   set {
     name  = "serviceAccount.name"
     value = "aws-load-balancer-controller"
+  }
+
+  set {
+    name  = "region"
+    value = var.aws_region
   }
 
   set {
@@ -47,7 +52,7 @@ resource "helm_release" "aws_efs_csi_driver" {
 
   set {
     name  = "controller.serviceAccount.create"
-    value = "true"
+    value = "false"
   }
 
   set {
@@ -168,7 +173,7 @@ resource "helm_release" "cluster_autoscaler" {
 
   set {
     name  = "rbac.serviceAccount.create"
-    value = "true"
+    value = "false"
   }
 
   set {
