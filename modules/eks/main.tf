@@ -32,5 +32,7 @@ module "eks" {
   # Enable IAM Roles for Service Accounts (IRSA)
   enable_irsa = true
 
+  enable_cluster_creator_admin_permissions = var.enable_cluster_creator_admin_permissions
+
   tags = var.tags
 }

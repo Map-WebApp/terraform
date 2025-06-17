@@ -29,13 +29,18 @@ variable "node_desired_capacity" {
 }
 
 variable "key_name" {
-  description = "The name of the EC2 key pair to associate with the worker nodes."
+  description = "The name of the SSH key pair to associate with the EKS worker nodes."
   type        = string
-  default     = null
+}
+
+variable "enable_cluster_creator_admin_permissions" {
+  description = "Indicates whether to grant cluster-admin permissions to the IAM principal that created the cluster."
+  type        = bool
+  default     = false
 }
 
 variable "tags" {
-  description = "A map of tags to assign to the resources."
+  description = "A map of tags to apply to the resources."
   type        = map(string)
   default     = {}
 }

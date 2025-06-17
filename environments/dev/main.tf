@@ -69,6 +69,8 @@ module "eks" {
   node_desired_capacity = var.eks_desired_nodes
   key_name              = module.keypair.key_name
 
+  enable_cluster_creator_admin_permissions = true
+
   tags = local.common_tags
 }
 
