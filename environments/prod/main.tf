@@ -150,5 +150,5 @@ module "helm_releases" {
   jenkins_role_arn                     = ""  # Not used in PROD
   cluster_autoscaler_role_arn          = module.iam.cluster_autoscaler_role_arn
 
-  depends_on = [module.eks, module.iam, module.efs]
+  depends_on = [module.eks, module.iam, module.efs, null_resource.helm_repo_setup]
 }
