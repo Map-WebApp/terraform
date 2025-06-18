@@ -26,10 +26,9 @@ module "jenkins_irsa" {
   role_policy_arns = {
     ecr_power_user = "arn:aws:iam::aws:policy/AmazonEC2ContainerRegistryPowerUser"
   }
-
   oidc_providers = {
     main = {
-      provider_arn               = var.cluster_oidc_issuer_url
+      provider_arn               = local.oidc_provider_arn
       namespace_service_accounts = ["cicd:jenkins"]
     }
   }
@@ -48,10 +47,9 @@ module "aws_load_balancer_controller_irsa" {
   role_policy_arns = {
     alb_controller = aws_iam_policy.load_balancer_controller.arn
   }
-
   oidc_providers = {
     main = {
-      provider_arn               = var.cluster_oidc_issuer_url
+      provider_arn               = local.oidc_provider_arn
       namespace_service_accounts = ["kube-system:aws-load-balancer-controller"]
     }
   }
@@ -68,10 +66,9 @@ module "efs_csi_driver_irsa" {
 
   role_name_prefix      = "mapapp-efs-csi-driver-role-"
   attach_efs_csi_policy = true
-
   oidc_providers = {
     main = {
-      provider_arn               = var.cluster_oidc_issuer_url
+      provider_arn               = local.oidc_provider_arn
       namespace_service_accounts = ["kube-system:efs-csi-controller-sa"]
     }
   }
@@ -89,10 +86,9 @@ module "cluster_autoscaler_irsa" {
   role_name_prefix                 = "mapapp-cluster-autoscaler-role-"
   attach_cluster_autoscaler_policy = true
   cluster_autoscaler_cluster_names = [var.cluster_name]
-
   oidc_providers = {
     main = {
-      provider_arn               = var.cluster_oidc_issuer_url
+      provider_arn               = local.oidc_provider_arn
       namespace_service_accounts = ["kube-system:cluster-autoscaler"]
     }
   }
