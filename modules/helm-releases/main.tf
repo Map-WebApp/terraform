@@ -9,15 +9,15 @@ resource "helm_release" "aws_load_balancer_controller" {
   chart      = "aws-load-balancer-controller"
   namespace  = "kube-system"
   version    = "1.7.1"
+  timeout    = 900  # 15 minutes
 
   set {
     name  = "clusterName"
     value = var.cluster_name
   }
-
   set {
     name  = "serviceAccount.create"
-    value = "false"
+    value = "true"
   }
 
   set {
@@ -35,7 +35,7 @@ resource "helm_release" "aws_load_balancer_controller" {
     value = var.aws_load_balancer_controller_role_arn
   }
 
-  depends_on = [var.cluster_endpoint]
+  depends_on = [var.eks_dependency, var.cluster_endpoint]
 }
 
 #---------------------------------------------------------
@@ -49,10 +49,10 @@ resource "helm_release" "aws_efs_csi_driver" {
   chart      = "aws-efs-csi-driver"
   namespace  = "kube-system"
   version    = "2.5.6"
-
+  timeout    = 900  # 15 minutes
   set {
     name  = "controller.serviceAccount.create"
-    value = "false"
+    value = "true"
   }
 
   set {
@@ -65,7 +65,7 @@ resource "helm_release" "aws_efs_csi_driver" {
     value = var.efs_csi_driver_role_arn
   }
 
-  depends_on = [var.cluster_endpoint]
+  depends_on = [var.eks_dependency, var.cluster_endpoint]
 }
 
 #---------------------------------------------------------
@@ -78,24 +78,24 @@ resource "helm_release" "jenkins" {
   repository = "https://charts.jenkins.io"
   chart      = "jenkins"
   namespace  = "cicd"
-  version    = "5.0.7"
+  version    = "5.0.17"  # Updated to current LTS
+  timeout    = 1200      # 20 minutes timeout
+  wait       = true      # Wait for readiness
 
   create_namespace = true
 
   values = [
     yamlencode({
-      controller = {
-        serviceAccount = {
+      controller = {        serviceAccount = {
           create = true
           name   = "jenkins"
           annotations = {
             "eks.amazonaws.com/role-arn" = var.jenkins_role_arn
-          }
-        }
+          }        }
         persistence = {
           enabled      = true
-          storageClass = "efs-sc"
-          size         = "10Gi"
+          storageClass = "gp2"  # Use EBS instead of EFS for better performance
+          size         = "20Gi" # Increase size for Jenkins workspace
         }
         resources = {
           requests = {
@@ -103,15 +103,26 @@ resource "helm_release" "jenkins" {
             cpu    = "500m"
           }
           limits = {
-            memory = "2Gi"
-            cpu    = "1000m"
+            memory = "4Gi"  # Increase memory limit
+            cpu    = "2000m" # Increase CPU limit
           }
+        }
+        # Add readiness and liveness probe configuration
+        readinessProbe = {
+          initialDelaySeconds = 120  # Wait 2 minutes before first probe
+          timeoutSeconds      = 5
+          failureThreshold    = 12   # Allow more failures before marking as failed
+        }
+        livenessProbe = {
+          initialDelaySeconds = 180  # Wait 3 minutes before first probe
+          timeoutSeconds      = 5
+          failureThreshold    = 12
         }
       }
     })
   ]
 
-  depends_on = [var.cluster_endpoint, helm_release.aws_efs_csi_driver]
+  depends_on = [var.eks_dependency, var.cluster_endpoint, helm_release.aws_efs_csi_driver]
 }
 
 #---------------------------------------------------------
@@ -146,7 +157,7 @@ resource "helm_release" "argocd" {
     })
   ]
 
-  depends_on = [var.cluster_endpoint, helm_release.aws_load_balancer_controller]
+  depends_on = [var.eks_dependency, var.cluster_endpoint, helm_release.aws_load_balancer_controller]
 }
 
 #---------------------------------------------------------
@@ -160,6 +171,7 @@ resource "helm_release" "cluster_autoscaler" {
   chart      = "cluster-autoscaler"
   namespace  = "kube-system"
   version    = "9.35.0"
+  timeout    = 900  # 15 minutes
 
   set {
     name  = "autoDiscovery.clusterName"
@@ -170,10 +182,9 @@ resource "helm_release" "cluster_autoscaler" {
     name  = "awsRegion"
     value = var.aws_region
   }
-
   set {
     name  = "rbac.serviceAccount.create"
-    value = "false"
+    value = "true"
   }
 
   set {
@@ -186,5 +197,5 @@ resource "helm_release" "cluster_autoscaler" {
     value = var.cluster_autoscaler_role_arn
   }
 
-  depends_on = [var.cluster_endpoint]
+  depends_on = [var.eks_dependency, var.cluster_endpoint]
 }
