@@ -1,7 +1,7 @@
 variable "region" {
   description = "AWS region"
   type        = string
-  default     = "ap-southeast-1"
+  default     = "us-east-1"
 }
 
 variable "environment" {
@@ -26,7 +26,7 @@ variable "vpc_cidr" {
 variable "azs" {
   description = "Availability Zones"
   type        = list(string)
-  default     = ["ap-southeast-1a", "ap-southeast-1b", "ap-southeast-1c"]
+  default     = ["us-east-1a", "us-east-1b", "us-east-1c"]
 }
 
 variable "private_subnet_cidrs" {
@@ -51,13 +51,13 @@ variable "single_nat_gateway" {
 variable "cluster_version" {
   description = "Kubernetes version"
   type        = string
-  default     = "1.30"
+  default     = "1.32"
 }
 
 variable "eks_instance_type" {
   description = "Instance type for EKS worker nodes"
   type        = string
-  default     = "t3.large"
+  default     = "t3.medium"
 }
 
 variable "eks_desired_nodes" {
@@ -75,7 +75,7 @@ variable "eks_min_nodes" {
 variable "eks_max_nodes" {
   description = "Maximum number of worker nodes"
   type        = number
-  default     = 9
+  default     = 8
 }
 
 # Database Configuration
