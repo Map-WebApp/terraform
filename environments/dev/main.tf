@@ -135,6 +135,7 @@ module "helm_releases" {
   cluster_name         = local.cluster_name
   cluster_endpoint     = module.eks.cluster_endpoint
   aws_region          = var.region
+  eks_dependency      = module.eks
 
   # Enable components for DEV environment
   enable_aws_load_balancer_controller = true
