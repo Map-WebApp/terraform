@@ -13,6 +13,12 @@ variable "aws_region" {
   type        = string
 }
 
+variable "eks_dependency" {
+  description = "EKS module dependency to ensure cluster is ready before Helm charts are installed."
+  type        = any
+  default     = null
+}
+
 # Enable/disable flags for each component
 variable "enable_aws_load_balancer_controller" {
   description = "Whether to deploy AWS Load Balancer Controller."
